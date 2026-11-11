@@ -1,0 +1,693 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "0180ffca-e40b-422c-8704-512dc15607b9",
+      "name": "Todo dia às 7h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "itemId",
+              "value": "SEU_ITEM_ID_PLUGGY",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "dataInicio",
+              "value": "={{ $today.minus({ days: 3 }).toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "nomePlanilha",
+              "value": "Finanças - Painel",
+              "type": "string"
+            },
+            {
+              "id": "cfg-4",
+              "name": "banco",
+              "value": "PicPay",
+              "type": "string"
+            },
+            {
+              "id": "cfg-5",
+              "name": "corPersonalizada",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "cfg-6",
+              "name": "diasHistoricoInicial",
+              "value": 90,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3dec7073-fe8e-42ac-873a-1d284affb228",
+      "name": "Configurações",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        128,
+        -16
+      ],
+      "notes": "banco: Nubank, Itaú, Inter, Bradesco, Santander, Banco do Brasil, Caixa, C6, PicPay, Mercado Pago, Sicredi, Sicoob, BTG, PagBank, Neon, Next, Original. corPersonalizada (opcional): um hex tipo #820AD1, que vence o banco. diasHistoricoInicial: quantos dias de histórico puxar quando a planilha é criada."
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=name = '{{ $json.nomePlanilha }}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false"
+            },
+            {
+              "name": "fields",
+              "value": "files(id,name)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "050e808f-1a59-4a42-be13-778540592106",
+      "name": "Procurar planilha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        352,
+        -16
+      ],
+      "notes": "Procura no seu Google Drive uma planilha com o nome definido em Configurações."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "if-1",
+              "leftValue": "={{ ($json.files || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "eaf0c879-c212-4ea1-9745-9d79634faf61",
+      "name": "Planilha já existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.createBody) }}",
+        "options": {}
+      },
+      "id": "441f9d2b-d63d-45b4-a629-729ea82cbab2",
+      "name": "Criar planilha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        320
+      ],
+      "notes": "Só roda na primeira vez: cria as abas Painel e Transações."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "pl-1",
+              "name": "spreadsheetId",
+              "value": "={{ $json.spreadsheetId || $json.files[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "pl-2",
+              "name": "linkPlanilha",
+              "value": "=https://docs.google.com/spreadsheets/d/{{ $json.spreadsheetId || $json.files[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "pl-3",
+              "name": "planilhaNova",
+              "value": "={{ $json.files === undefined }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e0724b23-fca9-4c31-9493-6b30d6890007",
+      "name": "Planilha pronta",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        960,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pluggy.ai/auth",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "options": {}
+      },
+      "id": "f29a7dee-aa3b-4179-b0fe-beb606d6b1f4",
+      "name": "Autenticar na Pluggy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1152,
+        -16
+      ],
+      "notes": "Usa uma credencial do tipo Custom Auth com seu clientId e clientSecret. Devolve uma apiKey temporária."
+    },
+    {
+      "parameters": {
+        "url": "https://api.pluggy.ai/accounts",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "itemId",
+              "value": "={{ $('Configurações').first().json.itemId }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $('Autenticar na Pluggy').first().json.apiKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d2d390ee-e534-4eda-b191-45be13f52d0e",
+      "name": "Buscar contas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results",
+        "options": {}
+      },
+      "id": "6cb0a126-6928-4d53-9075-6317216c6ff3",
+      "name": "Separar contas",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.pluggy.ai/v2/transactions",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "accountId",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "dateFrom",
+              "value": "={{ $('Planilha pronta').first().json.planilhaNova ? $today.minus({ days: $('Configurações').first().json.diasHistoricoInicial }).toISO() : $('Configurações').first().json.dataInicio }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $('Autenticar na Pluggy').first().json.apiKey }}"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "after",
+                    "value": "={{ decodeURIComponent((($response.body.next || '').split('after=')[1] || '').split('&')[0]) }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body.next }}",
+              "limitPagesFetched": true,
+              "maxRequests": 20
+            }
+          }
+        }
+      },
+      "id": "cc1b5062-e551-4679-babf-4ba8e309350c",
+      "name": "Buscar transações",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        -16
+      ],
+      "notes": "Na primeira execução (planilha nova) puxa o histórico inicial; depois, só os últimos 3 dias. Pagina automaticamente se houver mais de 500 transações."
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results",
+        "options": {}
+      },
+      "id": "16b47691-245d-454e-8e8e-3c34384b3f47",
+      "name": "Separar transações",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fmt-1",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "fmt-2",
+              "name": "data",
+              "value": "={{ DateTime.fromISO($json.date).toFormat('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "fmt-3",
+              "name": "descricao",
+              "value": "={{ $json.description }}",
+              "type": "string"
+            },
+            {
+              "id": "fmt-4",
+              "name": "valor",
+              "value": "={{ $json.amount }}",
+              "type": "number"
+            },
+            {
+              "id": "fmt-5",
+              "name": "categoria",
+              "value": "={{ $json.category || 'Sem categoria' }}",
+              "type": "string"
+            },
+            {
+              "id": "fmt-6",
+              "name": "tipo",
+              "value": "={{ $json.type === 'DEBIT' ? 'Saída' : 'Entrada' }}",
+              "type": "string"
+            },
+            {
+              "id": "fmt-7",
+              "name": "conta",
+              "value": "={{ $('Separar contas').item.json.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "51e9d368-3fc2-4439-b396-e1c4ee78c984",
+      "name": "Organizar colunas",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1888,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Planilha pronta').first().json.spreadsheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Transações",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "descricao",
+              "displayName": "descricao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "valor",
+              "displayName": "valor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "categoria",
+              "displayName": "categoria",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "conta",
+              "displayName": "conta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "0a33c41c-015a-4732-8577-b99202d63ca1",
+      "name": "Salvar na planilha",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2048,
+        -16
+      ],
+      "notes": "Usa a planilha encontrada ou criada no início. A coluna id evita lançamentos duplicados."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Monta a planilha estilizada (Painel + Transações) na cor do banco.\nconst cfg = $('Configurações').first().json;\n\n// ---------- Cores ----------\nconst PALETA = {\n  nubank: '#820AD1', itau: '#EC7000', inter: '#FF7A00', bradesco: '#CC092F',\n  santander: '#EC0000', bancodobrasil: '#465EFF', bb: '#465EFF', caixa: '#005CA9',\n  c6: '#242424', c6bank: '#242424', picpay: '#21C25E', mercadopago: '#009EE3',\n  sicredi: '#3FA110', sicoob: '#003641', btg: '#0D2B4E', btgpactual: '#0D2B4E',\n  pagbank: '#00A868', neon: '#0080FF', next: '#00C853', original: '#00A651'\n};\nconst chave = String(cfg.banco || '')\n  .normalize('NFD').replace(/[̀-ͯ]/g, '')\n  .toLowerCase().replace(/[^a-z0-9]/g, '');\nlet hex = String(cfg.corPersonalizada || '').trim() || PALETA[chave] || '#4F46E5';\nif (!hex.startsWith('#')) hex = '#' + hex;\nif (!/^#[0-9a-fA-F]{6}$/.test(hex)) hex = '#4F46E5';\n\nconst n = parseInt(hex.slice(1), 16);\nconst r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;\nconst cor = (rr, gg, bb) => ({ red: rr / 255, green: gg / 255, blue: bb / 255 });\nconst tom = f => cor(r + (255 - r) * f, g + (255 - g) * f, b + (255 - b) * f);\n\nconst PRINCIPAL = cor(r, g, b);\nconst CLARO = tom(0.93);\nconst MEDIO = tom(0.75);\nconst lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;\nconst TEXTO_SOBRE = lum > 0.65 ? cor(17, 24, 39) : cor(255, 255, 255);\nconst SUBTEXTO_SOBRE = lum > 0.65 ? cor(55, 65, 81) : tom(0.7);\nconst BRANCO = cor(255, 255, 255);\nconst CINZA = cor(107, 114, 128);\nconst VERDE = cor(22, 163, 74);\nconst VERMELHO = cor(220, 38, 38);\nconst VERMELHO_SUAVE = cor(248, 113, 113);\nconst FONTE = 'Inter';\n\nconst PAINEL = 0, TX = 1, LINHAS = 5000;\nconst T = \"'Transações'!\";\nconst nomeBanco = String(cfg.banco || 'Meu banco');\n\n// ---------- Helpers ----------\nconst rg = (sheetId, r1, r2, c1, c2) => ({\n  sheetId, startRowIndex: r1, endRowIndex: r2, startColumnIndex: c1, endColumnIndex: c2\n});\nconst formato = (range, f, campos) => ({\n  repeatCell: { range, cell: { userEnteredFormat: f }, fields: 'userEnteredFormat(' + campos + ')' }\n});\nconst valor = v => typeof v === 'number'\n  ? { numberValue: v }\n  : String(v).startsWith('=') ? { formulaValue: v } : { stringValue: String(v) };\nconst celulas = (sheetId, row, col, linhas) => ({\n  updateCells: {\n    start: { sheetId, rowIndex: row, columnIndex: col },\n    rows: linhas.map(l => ({ values: l.map(v => v === null ? {} : { userEnteredValue: valor(v) }) })),\n    fields: 'userEnteredValue'\n  }\n});\nconst mesclar = range => ({ mergeCells: { range, mergeType: 'MERGE_ALL' } });\nconst colunas = (sheetId, c1, c2, px) => ({\n  updateDimensionProperties: {\n    range: { sheetId, dimension: 'COLUMNS', startIndex: c1, endIndex: c2 },\n    properties: { pixelSize: px }, fields: 'pixelSize'\n  }\n});\nconst linhas = (sheetId, r1, r2, px) => ({\n  updateDimensionProperties: {\n    range: { sheetId, dimension: 'ROWS', startIndex: r1, endIndex: r2 },\n    properties: { pixelSize: px }, fields: 'pixelSize'\n  }\n});\nconst MOEDA = { type: 'CURRENCY', pattern: '\"R$ \"#,##0.00' };\nconst DATA = { type: 'DATE', pattern: 'dd/mm/yyyy' };\n\n// Soma (em valor absoluto) das transações de um tipo entre duas datas\nconst soma = (tipo, ini, fim) =>\n  `=SUMPRODUCT((${T}$F$2:$F=\"${tipo}\")*(${T}$B$2:$B>=${ini})*(${T}$B$2:$B<=${fim})*ABS(${T}$D$2:$D))`;\nconst INI_MES = 'EOMONTH(TODAY(),-1)+1';\nconst FIM_MES = 'EOMONTH(TODAY(),0)';\n\n// ---------- Corpo de criação ----------\nconst cabecalhos = ['id', 'data', 'descricao', 'valor', 'categoria', 'tipo', 'conta'];\nconst createBody = {\n  properties: { title: cfg.nomePlanilha, locale: 'en_US', timeZone: 'America/Sao_Paulo' },\n  sheets: [\n    {\n      properties: {\n        sheetId: PAINEL, title: 'Painel', index: 0,\n        gridProperties: { hideGridlines: true, rowCount: 60, columnCount: 20 },\n        tabColorStyle: { rgbColor: PRINCIPAL }\n      }\n    },\n    {\n      properties: {\n        sheetId: TX, title: 'Transações', index: 1,\n        gridProperties: { frozenRowCount: 1, rowCount: LINHAS, columnCount: 7 },\n        tabColorStyle: { rgbColor: MEDIO }\n      },\n      data: [{\n        startRow: 0, startColumn: 0,\n        rowData: [{ values: cabecalhos.map(h => ({ userEnteredValue: { stringValue: h } })) }]\n      }]\n    }\n  ]\n};\n\n// ---------- Estilização ----------\nconst req = [];\n\n// ===== Aba Transações =====\nreq.push(formato(rg(TX, 0, LINHAS, 0, 7), { textFormat: { fontFamily: FONTE, fontSize: 10 }, verticalAlignment: 'MIDDLE' }, 'textFormat,verticalAlignment'));\nreq.push(formato(rg(TX, 0, 1, 0, 7), {\n  backgroundColor: PRINCIPAL,\n  textFormat: { fontFamily: FONTE, fontSize: 10, bold: true, foregroundColor: TEXTO_SOBRE },\n  verticalAlignment: 'MIDDLE', padding: { left: 8 }\n}, 'backgroundColor,textFormat,verticalAlignment,padding'));\nreq.push(linhas(TX, 0, 1, 38));\nreq.push(linhas(TX, 1, LINHAS, 26));\nreq.push(colunas(TX, 0, 1, 80));\nreq.push(colunas(TX, 1, 2, 100));\nreq.push(colunas(TX, 2, 3, 340));\nreq.push(colunas(TX, 3, 4, 120));\nreq.push(colunas(TX, 4, 5, 170));\nreq.push(colunas(TX, 5, 6, 90));\nreq.push(colunas(TX, 6, 7, 200));\nreq.push(formato(rg(TX, 1, LINHAS, 0, 1), { textFormat: { fontFamily: FONTE, fontSize: 8, foregroundColor: CINZA } }, 'textFormat'));\nreq.push(formato(rg(TX, 1, LINHAS, 1, 2), { numberFormat: DATA, horizontalAlignment: 'CENTER' }, 'numberFormat,horizontalAlignment'));\nreq.push(formato(rg(TX, 1, LINHAS, 3, 4), { numberFormat: MOEDA }, 'numberFormat'));\nreq.push(formato(rg(TX, 1, LINHAS, 5, 6), { horizontalAlignment: 'CENTER' }, 'horizontalAlignment'));\nreq.push({\n  addBanding: {\n    bandedRange: {\n      range: rg(TX, 0, LINHAS, 0, 7),\n      rowProperties: { headerColorStyle: { rgbColor: PRINCIPAL }, firstBandColorStyle: { rgbColor: BRANCO }, secondBandColorStyle: { rgbColor: CLARO } }\n    }\n  }\n});\nfor (const [tipo, c] of [['Entrada', VERDE], ['Saída', VERMELHO]]) {\n  req.push({\n    addConditionalFormatRule: {\n      index: 0,\n      rule: {\n        ranges: [rg(TX, 1, LINHAS, 3, 4), rg(TX, 1, LINHAS, 5, 6)],\n        booleanRule: {\n          condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: `=$F2=\"${tipo}\"` }] },\n          format: { textFormat: { bold: true, foregroundColorStyle: { rgbColor: c } } }\n        }\n      }\n    }\n  });\n}\nreq.push({ setBasicFilter: { filter: { range: rg(TX, 0, LINHAS, 0, 7) } } });\n\n// ===== Aba Painel =====\nreq.push(formato(rg(PAINEL, 0, 60, 0, 20), { textFormat: { fontFamily: FONTE, fontSize: 10 }, verticalAlignment: 'MIDDLE' }, 'textFormat,verticalAlignment'));\nreq.push(colunas(PAINEL, 0, 1, 24));\nreq.push(colunas(PAINEL, 1, 9, 125));\nreq.push(colunas(PAINEL, 9, 10, 24));\nreq.push(linhas(PAINEL, 0, 1, 16));\nreq.push(linhas(PAINEL, 1, 2, 64));\nreq.push(linhas(PAINEL, 2, 3, 30));\nreq.push(linhas(PAINEL, 3, 4, 18));\nreq.push(linhas(PAINEL, 4, 5, 30));\nreq.push(linhas(PAINEL, 5, 6, 52));\nreq.push(linhas(PAINEL, 6, 7, 22));\nreq.push(linhas(PAINEL, 7, 8, 32));\n\n// Cabeçalho\nreq.push(mesclar(rg(PAINEL, 1, 2, 1, 9)));\nreq.push(mesclar(rg(PAINEL, 2, 3, 1, 9)));\nreq.push(celulas(PAINEL, 1, 1, [['💰  Minhas Finanças']]));\nreq.push(celulas(PAINEL, 2, 1, [[`${nomeBanco}  ·  atualizado automaticamente todo dia às 7h`]]));\nreq.push(formato(rg(PAINEL, 1, 2, 1, 9), {\n  backgroundColor: PRINCIPAL, padding: { left: 16 },\n  textFormat: { fontFamily: FONTE, fontSize: 22, bold: true, foregroundColor: TEXTO_SOBRE }\n}, 'backgroundColor,padding,textFormat'));\nreq.push(formato(rg(PAINEL, 2, 3, 1, 9), {\n  backgroundColor: PRINCIPAL, padding: { left: 16 }, verticalAlignment: 'TOP',\n  textFormat: { fontFamily: FONTE, fontSize: 10, foregroundColor: SUBTEXTO_SOBRE }\n}, 'backgroundColor,padding,verticalAlignment,textFormat'));\n\n// Cartões de resumo\nconst cartoes = [\n  { col: 1, titulo: 'ENTRADAS DO MÊS', formula: soma('Entrada', INI_MES, FIM_MES), cor: VERDE, moeda: true },\n  { col: 3, titulo: 'SAÍDAS DO MÊS', formula: soma('Saída', INI_MES, FIM_MES), cor: VERMELHO, moeda: true },\n  { col: 5, titulo: 'SALDO DO MÊS', formula: '=B6-D6', cor: PRINCIPAL, moeda: true },\n  { col: 7, titulo: 'TRANSAÇÕES NO MÊS', formula: `=COUNTIFS(${T}$B$2:$B,\">=\"&(${INI_MES}),${T}$B$2:$B,\"<=\"&${FIM_MES})`, cor: PRINCIPAL, moeda: false }\n];\nfor (const c of cartoes) {\n  req.push(mesclar(rg(PAINEL, 4, 5, c.col, c.col + 2)));\n  req.push(mesclar(rg(PAINEL, 5, 6, c.col, c.col + 2)));\n  req.push(celulas(PAINEL, 4, c.col, [[c.titulo]]));\n  req.push(celulas(PAINEL, 5, c.col, [[c.formula]]));\n  req.push(formato(rg(PAINEL, 4, 5, c.col, c.col + 2), {\n    backgroundColor: CLARO, padding: { left: 12 }, verticalAlignment: 'BOTTOM',\n    textFormat: { fontFamily: FONTE, fontSize: 8, bold: true, foregroundColor: CINZA }\n  }, 'backgroundColor,padding,verticalAlignment,textFormat'));\n  const f = {\n    backgroundColor: CLARO, padding: { left: 12 }, horizontalAlignment: 'LEFT',\n    textFormat: { fontFamily: FONTE, fontSize: 20, bold: true, foregroundColor: c.cor }\n  };\n  if (c.moeda) f.numberFormat = MOEDA;\n  req.push(formato(rg(PAINEL, 5, 6, c.col, c.col + 2), f,\n    'backgroundColor,padding,horizontalAlignment,textFormat' + (c.moeda ? ',numberFormat' : '')));\n  const borda = { style: 'SOLID_THICK', colorStyle: { rgbColor: BRANCO } };\n  req.push({ updateBorders: { range: rg(PAINEL, 4, 6, c.col, c.col + 2), left: borda, right: borda } });\n}\n// Saldo verde/vermelho\nfor (const [tipo, c] of [['NUMBER_LESS', VERMELHO], ['NUMBER_GREATER_THAN_EQ', VERDE]]) {\n  req.push({\n    addConditionalFormatRule: {\n      index: 0,\n      rule: {\n        ranges: [rg(PAINEL, 5, 6, 5, 7)],\n        booleanRule: { condition: { type: tipo, values: [{ userEnteredValue: '0' }] }, format: { textFormat: { foregroundColorStyle: { rgbColor: c } } } }\n      }\n    }\n  });\n}\n\n// Títulos das seções\nconst tituloSecao = (row, col, texto) => {\n  req.push(celulas(PAINEL, row, col, [[texto]]));\n  req.push(formato(rg(PAINEL, row, row + 1, col, col + 4), {\n    textFormat: { fontFamily: FONTE, fontSize: 12, bold: true, foregroundColor: PRINCIPAL },\n    borders: { bottom: { style: 'SOLID_MEDIUM', colorStyle: { rgbColor: MEDIO } } }\n  }, 'textFormat,borders'));\n};\ntituloSecao(7, 1, 'Gastos por categoria · mês atual');\ntituloSecao(7, 5, 'Entradas x Saídas · últimos 6 meses');\ntituloSecao(24, 1, 'Maiores gastos do mês');\n\n// Dados auxiliares dos gráficos (colunas K:P, ocultas)\nreq.push(celulas(PAINEL, 2, 10, [[\n  `=IFERROR(ARRAYFORMULA(QUERY(FILTER({${T}E2:E,ABS(${T}D2:D)},${T}F2:F=\"Saída\",${T}B2:B>=${INI_MES}),\"select Col1, sum(Col2) where Col1 is not null group by Col1 order by sum(Col2) desc label Col1 'Categoria', sum(Col2) 'Total'\",0)),{\"Categoria\",\"Total\";\"Sem gastos\",0})`\n]]));\nconst mensal = [['Mês', 'Entradas', 'Saídas']];\nfor (let i = 0; i < 6; i++) {\n  const ini = `EOMONTH(TODAY(),${i - 6})+1`;\n  const fim = `EOMONTH(TODAY(),${i - 5})`;\n  mensal.push([`=TEXT(${ini},\"mmm/yy\")`, soma('Entrada', ini, fim), soma('Saída', ini, fim)]);\n}\nreq.push(celulas(PAINEL, 2, 13, mensal));\nreq.push({\n  updateDimensionProperties: {\n    range: { sheetId: PAINEL, dimension: 'COLUMNS', startIndex: 10, endIndex: 16 },\n    properties: { hiddenByUser: true }, fields: 'hiddenByUser'\n  }\n});\n\n// Gráfico de rosca: gastos por categoria\nreq.push({\n  addChart: {\n    chart: {\n      spec: {\n        hiddenDimensionStrategy: 'SHOW_ALL',\n        fontName: FONTE,\n        backgroundColorStyle: { rgbColor: BRANCO },\n        pieChart: {\n          legendPosition: 'RIGHT_LEGEND',\n          pieHole: 0.55,\n          domain: { sourceRange: { sources: [rg(PAINEL, 3, 40, 10, 11)] } },\n          series: { sourceRange: { sources: [rg(PAINEL, 3, 40, 11, 12)] } }\n        }\n      },\n      position: { overlayPosition: { anchorCell: { sheetId: PAINEL, rowIndex: 8, columnIndex: 1 }, offsetYPixels: 6, widthPixels: 495, heightPixels: 300 } }\n    }\n  }\n});\n\n// Gráfico de colunas: entradas x saídas\nreq.push({\n  addChart: {\n    chart: {\n      spec: {\n        hiddenDimensionStrategy: 'SHOW_ALL',\n        fontName: FONTE,\n        backgroundColorStyle: { rgbColor: BRANCO },\n        basicChart: {\n          chartType: 'COLUMN',\n          legendPosition: 'BOTTOM_LEGEND',\n          headerCount: 1,\n          axis: [{ position: 'BOTTOM_AXIS' }, { position: 'LEFT_AXIS' }],\n          domains: [{ domain: { sourceRange: { sources: [rg(PAINEL, 2, 9, 13, 14)] } } }],\n          series: [\n            { series: { sourceRange: { sources: [rg(PAINEL, 2, 9, 14, 15)] } }, targetAxis: 'LEFT_AXIS', colorStyle: { rgbColor: PRINCIPAL } },\n            { series: { sourceRange: { sources: [rg(PAINEL, 2, 9, 15, 16)] } }, targetAxis: 'LEFT_AXIS', colorStyle: { rgbColor: VERMELHO_SUAVE } }\n          ]\n        }\n      },\n      position: { overlayPosition: { anchorCell: { sheetId: PAINEL, rowIndex: 8, columnIndex: 5 }, offsetYPixels: 6, widthPixels: 495, heightPixels: 300 } }\n    }\n  }\n});\n\n// Top 5 maiores gastos do mês\nreq.push(linhas(PAINEL, 24, 25, 32));\nreq.push(linhas(PAINEL, 25, 31, 30));\nreq.push(celulas(PAINEL, 25, 1, [['Valor', 'Data', 'Categoria', 'Descrição']]));\nreq.push(formato(rg(PAINEL, 25, 26, 1, 9), {\n  backgroundColor: PRINCIPAL, padding: { left: 10 },\n  textFormat: { fontFamily: FONTE, fontSize: 9, bold: true, foregroundColor: TEXTO_SOBRE }\n}, 'backgroundColor,padding,textFormat'));\nreq.push(celulas(PAINEL, 26, 1, [[\n  `=IFERROR(ARRAYFORMULA(QUERY(FILTER({${T}B2:B,${T}C2:C,${T}E2:E,ABS(${T}D2:D)},${T}F2:F=\"Saída\",${T}B2:B>=${INI_MES}),\"select Col4, Col1, Col3, Col2 order by Col4 desc limit 5\",0)),\"Nenhum gasto registrado neste mês ainda\")`\n]]));\nreq.push(formato(rg(PAINEL, 26, 31, 1, 9), {\n  padding: { left: 10 },\n  borders: { bottom: { style: 'SOLID', colorStyle: { rgbColor: CLARO } } }\n}, 'padding,borders'));\nreq.push(formato(rg(PAINEL, 26, 31, 1, 2), { numberFormat: MOEDA, textFormat: { fontFamily: FONTE, bold: true, foregroundColor: VERMELHO } }, 'numberFormat,textFormat'));\nreq.push(formato(rg(PAINEL, 26, 31, 2, 3), { numberFormat: DATA }, 'numberFormat'));\nreq.push(formato(rg(PAINEL, 26, 31, 3, 4), { textFormat: { fontFamily: FONTE, foregroundColor: CINZA } }, 'textFormat'));\n\n// Por último, troca o idioma para pt-BR: as fórmulas já gravadas são convertidas pelo próprio Google\nreq.push({ updateSpreadsheetProperties: { properties: { locale: 'pt_BR' }, fields: 'locale' } });\n\nreturn [{ json: { corUsada: hex, createBody, batchBody: { requests: req } } }];\n"
+      },
+      "id": "f93330ed-881c-4526-a26d-482273c38fe2",
+      "name": "Montar layout1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        320
+      ],
+      "notes": "Define cores, gráficos e formatação da planilha nova."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $json.spreadsheetId }}:batchUpdate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Montar layout1').first().json.batchBody) }}",
+        "options": {}
+      },
+      "id": "e59d62d5-0c19-4a83-adcd-a7bfe21aba33",
+      "name": "Estilizar planilha1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1168,
+        320
+      ],
+      "notes": "Aplica cores, cartões, gráficos e formatação."
+    }
+  ],
+  "connections": {
+    "Todo dia às 7h": {
+      "main": [
+        [
+          {
+            "node": "Configurações",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configurações": {
+      "main": [
+        [
+          {
+            "node": "Procurar planilha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procurar planilha": {
+      "main": [
+        [
+          {
+            "node": "Planilha já existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha já existe?": {
+      "main": [
+        [
+          {
+            "node": "Planilha pronta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Montar layout1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar planilha": {
+      "main": [
+        [
+          {
+            "node": "Estilizar planilha1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha pronta": {
+      "main": [
+        [
+          {
+            "node": "Autenticar na Pluggy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Autenticar na Pluggy": {
+      "main": [
+        [
+          {
+            "node": "Buscar contas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar contas": {
+      "main": [
+        [
+          {
+            "node": "Separar contas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar contas": {
+      "main": [
+        [
+          {
+            "node": "Buscar transações",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar transações": {
+      "main": [
+        [
+          {
+            "node": "Separar transações",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar transações": {
+      "main": [
+        [
+          {
+            "node": "Organizar colunas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Organizar colunas": {
+      "main": [
+        [
+          {
+            "node": "Salvar na planilha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar layout1": {
+      "main": [
+        [
+          {
+            "node": "Criar planilha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estilizar planilha1": {
+      "main": [
+        [
+          {
+            "node": "Planilha pronta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "name": "Painel financeiro - Open Finance"
+}
